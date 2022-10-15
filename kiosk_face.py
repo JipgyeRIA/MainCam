@@ -38,31 +38,58 @@ def l2_norm(x,y):
     return norm_val
 
 
-def face_checker(cam_stream, face_size_theshold = 0.3):
+def face_checker(cam_stream, face_size_theshold = 0.0):
     ret, frame = cam_stream.read()
 
     if ret:
         H,W,_ = frame.shape
         cam_size = H*W
         face_loc = face_recognition.face_locations(frame)
-        if len(face_loc):
+        # if len(face_loc) != 0:
+        #     top, right, bottom, left = face_loc[0]
+        #     cv2.rectangle(frame, [left,top],[right,bottom],(0,255,0))
+        # return 1,frame,""
+
+        if len(face_loc) == 0:
             return -1, None, ""
         else:
             max_face_size = -1
             max_face_loc = []
+
             for top, right, bottom, left in face_loc:
-                face_size = (bottom-top) * (left- right)
+                face_size = (bottom-top) * (right- left)
                 if max_face_size < face_size:
                     max_face_size = face_size
                     max_face_loc = [top, right, bottom, left]
 
-            if max_face_loc < cam_size * face_size_theshold:
+            if max_face_size < cam_size * face_size_theshold:
                 return -1, None, ""
+
             else:
                 top, right, bottom, left = max_face_loc
+                print(top,right,bottom,left)
                 cv2.rectangle(frame, [left,top],[right,bottom],(0,255,0))
-                face_embedding = face_recognition.face_encodings(frame, max_face_loc)
+                face_embedding = face_recognition.face_encodings(frame, [max_face_loc])
                 return 1, frame, embedding_2_str(face_embedding)
 
     else:
         return -1, None, ""
+
+
+if __name__ =='__main__':
+    cam = cv2.VideoCapture(0)
+    if cam.isOpened() == False:
+            exit()
+    
+
+    while cv2.waitKey(33) < 0:
+        ret, frame, emb = face_checker(cam)
+        print(ret)
+        if ret != -1:
+            cv2.imshow("VideoFrame", frame)
+            break
+        #break
+
+    #val,frame,emb =face_checker(cam)
+
+
