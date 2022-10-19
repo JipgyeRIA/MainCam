@@ -76,6 +76,23 @@ def face_checker(cam_stream, face_size_theshold = 0.0):
         return -1, None, ""
 
 
+def get_single_face(cam):
+    if cam.isOpened() == False:
+        return -1
+    
+    time = 0
+    while time < 100:
+        ret,frame, emb = face_checker(cam)
+        if ret != -1:
+            break
+    else:
+        return -1
+
+    return emb
+
+
+
+
 if __name__ =='__main__':
     cam = cv2.VideoCapture(0)
     if cam.isOpened() == False:
