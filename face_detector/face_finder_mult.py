@@ -76,10 +76,10 @@ def img_show_func( inst_queue, result_queue, video = None):
     group_len = -1
     group_loc = []
 
-    margin = 20
+    margin = 30
 
     if video ==None:
-        pass
+        vid = cv2.VideoCapture(0)
     else:
         vid = cv2.VideoCapture(video)
         if vid.isOpened() == False:
@@ -154,6 +154,7 @@ def img_show_func( inst_queue, result_queue, video = None):
             
             if group_previous_flag == True and group_flag == False:
                 #print(group_img,group_loc,group_key)
+
                 sending_inst_queue.put([group_img,group_loc,group_key])
 
                 # for (top,right,bottom,left,conf) in group_loc:
@@ -171,7 +172,7 @@ def img_show_func( inst_queue, result_queue, video = None):
                 # Group End Function
 
             cv2.imshow("frame multiprocess",frame)
-            cv2.waitKey(44)
+            cv2.waitKey(33)
         else:
             # For End Request
             finder_inst_queue.put(-1)
@@ -207,7 +208,7 @@ if __name__ =='__main__':
 
     img_proc = Process(target=img_show_func ,args=([finder_inst_queue, sending_inst_queue],
                                                 [finder_result_queue, sending_result_queue],
-                                                "./test_img/test_video_1.mp4",),
+                                                "./test_img/test_video_2.mp4",),
                                                 daemon=True)
         
     face_proc = Process(target=face_find_func ,args=(finder_inst_queue,finder_result_queue,),daemon=True)

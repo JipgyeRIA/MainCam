@@ -5,7 +5,8 @@ from sklearn import model_selection
 import time
 from datetime import datetime
 import os
-
+import requests
+import json
 def embedding_2_str(face_embedding, precision = 4, min_val = 1.0):
     # precision mean 0.000000 -> 6  아래 자리수 표현 즉 6일때 7칸 필요
     face_str = ""
@@ -41,29 +42,49 @@ def l2_norm(x,y):
     norm_val = math.sqrt(norm_val)
     return norm_val
 
-def model_classifying(model,img, model_mean = (78.4263377603, 87.7689143744, 114.895847746)):
+def gender_model_classifying(model,img, model_mean = (78.4263377603, 87.7689143744, 114.895847746)):
     blob = cv2.dnn.blobFromImage(img, 1, (227, 227),model_mean, swapRB=False)
-    
+    #   gender_list = ['Male', 'Female']
     model.setInput(blob)
     answers = model.forward()
+    #print(answers)
     answer = answers.argmax()
 
     return answer
 
-def send_ssh(embedding,age,gender,group_key):
-    emb_str = embedding_2_str(embedding)
-    print(f"SENDING : {emb_str} , {age}, {gender} in {group_key} \n")
+def age_model_classifying(model,img, model_mean = (78.4263377603, 87.7689143744, 114.895847746)):
+    blob = cv2.dnn.blobFromImage(img, 1, (227, 227),model_mean, swapRB=False)
+    #   age_list = ['(0 ~ 2)','(4 ~ 6)','(8 ~ 12)','(15 ~ 20)','(25 ~ 32)','(38 ~ 43)','(48 ~ 53)','(60 ~ 100)']
+    #   age_compute = [ { 0, 1 }, {2,3,4}, {5,6}, {7,8}]
+    model.setInput(blob)
+    answers = model.forward()
+    answers[0][0] = answers[0][0]+answers[0][1]
+    answers[0][1] = answers[0][2]+answers[0][3]+answers[0][4]
+    answers[0][2] = answers[0][5]+answers[0][6]
+    answers[0][4] = answers[0][7]
+    answers = answers[:,:5]
+    #answers = 
+    answer = answers.argmax()
+
+    return answer
+
+
+
+def send_ssh(group_dic, ip_endpoint = "https://jipgyeria.herokuapp.com/face/group"):
+
+    #headers = {"content-type": "application/json", "Authorization": "<auth-key>" }
+    val = {
+    "group":group_dic
+    }
+    val = json.dumps(val)
+    print(f"SENDING : {val} \n")
+
+    requests.post(ip_endpoint, data=val, headers= {"content-type": "application/json"})
     return 1
 
 def gender_age_func(img_process_queue, result_process_queue):
     
 
-    ### Age and Gender label ###
-    #
-    #   age_list = ['(0 ~ 2)','(4 ~ 6)','(8 ~ 12)','(15 ~ 20)','(25 ~ 32)','(38 ~ 43)','(48 ~ 53)','(60 ~ 100)']
-    #   gender_list = ['Male', 'Female']
-    #
-    ############################
     model_weight_path = "./weight_file"
     age_model  = os.path.join(model_weight_path,"deploy_age.prototxt")
     age_weight = os.path.join(model_weight_path,"age_net.caffemodel")
@@ -86,18 +107,25 @@ def gender_age_func(img_process_queue, result_process_queue):
             face_embedding = face_recognition.face_encodings(img,face_loc)
             H,W,_ = img.shape
 
-            response = 0
-            for (top,right,bottom,left,_),emb in zip(face_loc,face_embedding):
-                im_t,im_b,im_l,im_r = max(0,top-margin),min(H,bottom+margin),max(0,left-margin),min(W,right+margin)
-                age = model_classifying(age_net,img[im_t:im_b,im_l:im_r])
-                gender = model_classifying(gender_net,img[im_t:im_b,im_l:im_r])
-                
-                response += send_ssh(emb,age,gender,group_key)
 
-            if response == len(face_loc):
-                result_process_queue.put(1)
-            else:
-                result_process_queue.put(group_key)
+            group_mem_dic={}
+            for idx, ((top,right,bottom,left,_),emb) in enumerate(zip(face_loc,face_embedding)):
+                im_t,im_b,im_l,im_r = max(0,top-margin),min(H,bottom+margin),max(0,left-margin),min(W,right+margin)
+                age = age_model_classifying(age_net,img[im_t:im_b,im_l:im_r])
+                gender = gender_model_classifying(gender_net,img[im_t:im_b,im_l:im_r])
+                
+
+                group_mem_dic[f"p{idx}"]={
+                    "emb": embedding_2_str(emb),
+                    "age": int(age),
+                    "gender": int(gender),
+                    "group":group_key
+                }
+
+            send_ssh(group_mem_dic)
+
+            result_process_queue.put(1)
+
             
 
             #print("time :", time.time() - start)
