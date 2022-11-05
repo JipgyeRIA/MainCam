@@ -91,6 +91,7 @@ def img_show_func( inst_queue, result_queue, video = None):
         ret,frame = vid.read()
         if ret:
             H,W,_ = frame.shape
+            
 
             ################ face Detection ############
             if face_detector_lock == False:
@@ -232,7 +233,7 @@ if __name__ =='__main__':
     # img_proc.close()
     # face_proc.close()
 
-    print("file END")
+    print("Program End")
 
 
 
