@@ -157,6 +157,7 @@ def img_show_func( inst_queue, result_queue, video = None):
                 #print(group_img,group_loc,group_key)
 
                 sending_inst_queue.put([group_img,group_loc,group_key])
+                cv2.imwrite(f"./{group_key}.jpg",group_img)
 
                 # for (top,right,bottom,left,conf) in group_loc:
                 #     top,right,bottom,left = top-margin,right+margin,bottom+margin,left-margin
